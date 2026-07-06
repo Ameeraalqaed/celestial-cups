@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cc-night: #120f31;
+  --cc-lav: #ceaaff;
+}
+
+html, body {
+  background-color: var(--cc-night);
+  color: var(--cc-lav);
+}
+
+@keyframes cc-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@keyframes cc-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -40px, 0); }
+}
+@keyframes cc-rise {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.cc-rise { animation: cc-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.cc-field {
+  width: 100%;
+  background: rgba(206, 170, 255, 0.06);
+  border: 1px solid rgba(206, 170, 255, 0.22);
+  border-radius: 16px;
+  color: var(--cc-lav);
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.85rem 1.05rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.cc-field::placeholder { color: rgba(206, 170, 255, 0.4); }
+.cc-field:focus {
+  outline: none;
+  border-color: var(--cc-lav);
+  background: rgba(206, 170, 255, 0.1);
+  box-shadow: 0 0 0 4px rgba(206, 170, 255, 0.14);
+}
+textarea.cc-field { resize: vertical; min-height: 118px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-rise, [class*="cc-"] { animation: none !important; }
+}
