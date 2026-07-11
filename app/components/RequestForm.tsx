@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const FINISHES = ["Solid", "Gradient", "Metallic", "Celeste's Choice"];
 const MAX_COLORS = 3;
+const MAX_IMAGES = 6;
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 0.75;
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -16,6 +19,56 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
   );
 }
 
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        if (width >= height) {
+          height = Math.round((height * MAX_DIMENSION) / width);
+          width = MAX_DIMENSION;
+        } else {
+          width = Math.round((width * MAX_DIMENSION) / height);
+          height = MAX_DIMENSION;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const newName = file.name.replace(/\.\w+$/, "") + ".jpg";
+          resolve(new File([blob], newName, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        JPEG_QUALITY,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image_decode_failed"));
+    };
+    img.src = url;
+  });
+}
+
 export function RequestForm() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -24,8 +77,33 @@ export function RequestForm() {
   const [theme, setTheme] = useState("");
   const [special, setSpecial] = useState("");
   const [company, setCompany] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [imageError, setImageError] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const addFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    setImageError("");
+    const incoming = Array.from(fileList);
+    const room = MAX_IMAGES - images.length;
+    if (room <= 0) {
+      setImageError(`You can attach up to ${MAX_IMAGES} images.`);
+      return;
+    }
+    const toAdd = incoming.slice(0, room);
+    try {
+      const compressed = await Promise.all(toAdd.map(compressImage));
+      setImages((prev) => [...prev, ...compressed]);
+    } catch {
+      setImageError("One of those images couldn't be processed. Try a different file.");
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const submit = async () => {
     setError("");
@@ -34,25 +112,33 @@ export function RequestForm() {
       setStatus("error");
       return;
     }
+    if (images.length === 0) {
+      setError("Please attach at least one reference image.");
+      setStatus("error");
+      return;
+    }
     setStatus("submitting");
     try {
-      const res = await fetch("/api/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          contact: contact.trim(),
-          tubColors: colorText
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("contact", contact.trim());
+      formData.append(
+        "tubColors",
+        JSON.stringify(
+          colorText
             .split(",")
             .map((c) => c.trim())
             .filter(Boolean)
             .slice(0, MAX_COLORS),
-          tubFinish: finish,
-          theme: theme.trim(),
-          specialRequests: special.trim(),
-          company,
-        }),
-      });
+        ),
+      );
+      formData.append("tubFinish", finish);
+      formData.append("theme", theme.trim());
+      formData.append("specialRequests", special.trim());
+      formData.append("company", company);
+      images.forEach((img) => formData.append("referenceImages", img, img.name));
+
+      const res = await fetch("/api/request", { method: "POST", body: formData });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
       if (!res.ok || !data.ok) throw new Error("send_failed");
       setStatus("success");
@@ -74,7 +160,7 @@ export function RequestForm() {
           type="button"
           onClick={() => {
             setName(""); setContact(""); setColorText(""); setFinish("");
-            setTheme(""); setSpecial(""); setStatus("idle");
+            setTheme(""); setSpecial(""); setImages([]); setStatus("idle");
           }}
           className="mt-7 rounded-full border border-[#ceaaff]/40 px-6 py-2.5 text-sm font-medium text-[#ceaaff] transition hover:border-[#ceaaff] hover:bg-[#ceaaff]/10"
         >
@@ -139,11 +225,55 @@ export function RequestForm() {
         </div>
 
         <div>
+          <Label hint={`images, up to ${MAX_IMAGES}`}>Reference images</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={images.length >= MAX_IMAGES}
+            className="w-full rounded-2xl border border-dashed border-[#ceaaff]/35 px-4 py-6 text-sm text-[#ceaaff]/70 transition hover:border-[#ceaaff]/60 hover:text-[#ceaaff] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + Add inspiration images
+          </button>
+
+          {imageError ? <p className="mt-2 text-sm text-[#ff9db8]">{imageError}</p> : null}
+
+          {images.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {images.map((img, i) => (
+                <li
+                  key={`${img.name}-${i}`}
+                  className="flex items-center justify-between rounded-xl border border-[#ceaaff]/20 bg-[#ceaaff]/[0.04] px-4 py-2.5 text-sm text-[#ceaaff]/85"
+                >
+                  <span className="truncate pr-3">{img.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    className="shrink-0 text-[#ceaaff]/60 transition hover:text-[#ceaaff]"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        <div>
           <Label hint="optional">Special requests</Label>
           <textarea className="cc-field" value={special} onChange={(e) => setSpecial(e.target.value)} />
         </div>
 
-        {/* Honeypot */}
         <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
           <label>Company<input tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} /></label>
         </div>
