@@ -135,7 +135,7 @@ export default function Home() {
     <main className="relative text-[#ceaaff]">
       <Starfield />
 
-      <section ref={scrubRef} className="relative h-[1200vh]">
+      <section ref={scrubRef} className="relative h-[4500vh]">
         <div className="sticky top-0 h-dvh w-full overflow-hidden">
           {hasVideo ? (
             <video
