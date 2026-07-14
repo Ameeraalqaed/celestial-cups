@@ -113,11 +113,6 @@ export function RequestForm() {
       setStatus("error");
       return;
     }
-    if (images.length === 0) {
-      setError("Please attach at least one reference image.");
-      setStatus("error");
-      return;
-    }
     setStatus("submitting");
     try {
       const formData = new FormData();
@@ -237,7 +232,7 @@ export function RequestForm() {
         </div>
 
         <div>
-          <Label hint={`images, up to ${MAX_IMAGES}`}>Reference images</Label>
+          <Label hint={`optional, up to ${MAX_IMAGES}`}>Reference images</Label>
           <input
             ref={fileInputRef}
             type="file"
