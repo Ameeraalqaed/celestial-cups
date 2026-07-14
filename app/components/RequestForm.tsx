@@ -72,6 +72,7 @@ function compressImage(file: File): Promise<File> {
 export function RequestForm() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [emojis, setEmojis] = useState("");
   const [colorText, setColorText] = useState("");
   const [finish, setFinish] = useState("");
   const [theme, setTheme] = useState("");
@@ -122,6 +123,7 @@ export function RequestForm() {
       const formData = new FormData();
       formData.append("name", name.trim());
       formData.append("contact", contact.trim());
+      formData.append("emojiChallenge", emojis.trim());
       formData.append(
         "tubColors",
         JSON.stringify(
@@ -159,7 +161,7 @@ export function RequestForm() {
         <button
           type="button"
           onClick={() => {
-            setName(""); setContact(""); setColorText(""); setFinish("");
+            setName(""); setContact(""); setEmojis(""); setColorText(""); setFinish("");
             setTheme(""); setSpecial(""); setImages([]); setStatus("idle");
           }}
           className="mt-7 rounded-full border border-[#ceaaff]/40 px-6 py-2.5 text-sm font-medium text-[#ceaaff] transition hover:border-[#ceaaff] hover:bg-[#ceaaff]/10"
@@ -183,6 +185,16 @@ export function RequestForm() {
         <div>
           <Label hint="phone or WhatsApp">Contact</Label>
           <input className="cc-field" value={contact} onChange={(e) => setContact(e.target.value)} inputMode="tel" />
+        </div>
+
+        <div>
+          <Label hint="choose 3 emojis">3 Emoji Challenge</Label>
+          <input
+            className="cc-field"
+            value={emojis}
+            onChange={(e) => setEmojis(e.target.value)}
+            placeholder="🌙 ✨ 🍄"
+          />
         </div>
 
         <div>
