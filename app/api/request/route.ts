@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       // ignore malformed input, tubColors stays empty
     }
 
+    const emojiChallenge = ((form.get("emojiChallenge") as string) || "").trim().slice(0, 100);
     const rawFinish = ((form.get("tubFinish") as string) || "").trim();
     const tubFinish = TUB_FINISHES.includes(rawFinish) ? rawFinish : "";
     const theme = ((form.get("theme") as string) || "").trim().slice(0, 1900);
@@ -108,6 +109,7 @@ export async function POST(req: Request) {
     const properties: Record<string, unknown> = {
       Name: { title: [{ text: { content: name || "Untitled request" } }] },
       Contact: richText(contact),
+      "3 Emoji Challenge": richText(emojiChallenge),
       Theme: richText(theme),
       "Special Requests": richText(specialRequests),
       "Tub Colors": { multi_select: tubColors.map((n: string) => ({ name: n })) },
