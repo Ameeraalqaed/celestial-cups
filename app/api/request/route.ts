@@ -81,9 +81,6 @@ export async function POST(req: Request) {
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
       .slice(0, MAX_IMAGES);
 
-    if (images.length === 0) {
-      return NextResponse.json({ ok: false, code: "missing_images" }, { status: 400 });
-    }
     for (const img of images) {
       if (img.size > MAX_IMAGE_BYTES) {
         return NextResponse.json({ ok: false, code: "image_too_large" }, { status: 400 });
